@@ -1,4 +1,4 @@
 .env
-admin/
-api/
-site/
+admin
+api
+site
