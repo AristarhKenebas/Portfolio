@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-portfolio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-portfolio}
+      POSTGRES_DB: ${POSTGRES_DB:-portfolio}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - portfolio
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - portfolio
+
+  api:
+    build:
+      context: ./api
+      dockerfile: ../api.Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-portfolio}:${POSTGRES_PASSWORD:-portfolio}@db:5432/${POSTGRES_DB:-portfolio}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${API_PORT:-3001}:3001"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - portfolio
+
+  site:
+    build:
+      context: ./site
+      dockerfile: ../site.Dockerfile
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_API_URL: http://api:3001
+    ports:
+      - "${SITE_PORT:-3000}:3000"
+    depends_on:
+      - api
+    networks:
+      - portfolio
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: ../admin.Dockerfile
+    restart: unless-stopped
+    environment:
+      NUXT_PUBLIC_API_URL: http://localhost:3001
+      PORT: 3002
+    ports:
+      - "${ADMIN_PORT:-3002}:3002"
+    depends_on:
+      - api
+    networks:
+      - portfolio
+
+networks:
+  portfolio:
+
+volumes:
+  postgres_data:
+  redis_data:
